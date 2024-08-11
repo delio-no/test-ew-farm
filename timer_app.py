@@ -76,40 +76,14 @@ class TimerApp:
 
     @require_hwnd
     def start(self):
-        if self.is_run:
-            print('-----')
-            print('Таймер уже запущен')
-            return
-        if self.remaining_time:
-            print('-----')
-            print('Старт таймера')
-            self.timer = threading.Timer(self.remaining_time, self.timer_function)
-            self.press_key_z()
-            self.start_time = time.time()
-            self.end_time = self.start_time + self.remaining_time
-        else:
-            print('-----')
-            print('Старт таймера')
-            self.timer = threading.Timer(self.timer_duration, self.timer_function)
-            self.press_key_z()
-            self.start_time = time.time()
-            self.end_time = self.start_time + self.timer_duration
+        print('-----')
+        print('Старт таймера')
+        self.timer = threading.Timer(self.timer_duration, self.timer_function)
+        self.press_key_z()
+        self.start_time = time.time()
+        self.end_time = self.start_time + self.timer_duration
         self.is_run = True
         self.timer.start()
-
-    @require_hwnd
-    def stop(self):
-        if self.is_run:
-            self.remaining_time = self.get_remaining_time()
-            self.timer.cancel()
-            self.is_run = False
-            self.press_key_z()
-            print('-----')
-            print('Таймер остановлен')
-            print(f'Время таймера: {self.get_remaining_time()}')
-        else:
-            print('-----')
-            print('Таймер не запущен')
 
     @require_hwnd
     def reset(self):
@@ -117,9 +91,6 @@ class TimerApp:
             self.timer.cancel()
             self.is_run = False
             self.remaining_time = None
-            print('-----')
-            print('Таймер сброшен')
-            self.press_key_z()
         else:
             print('Таймер не запущен')
 
@@ -154,10 +125,9 @@ print('\n')
 print("Описание функционала программы:")
 print("1. При нажатии 'ctrl+q' - захватывает HWID (PID) и HWND текущего активного окна.")
 print("2. При нажатии 'ctrl+w' - отправляет клавишу 'z' в текущий активный процесс и запускает таймер.")
-print("3. При нажатии 'ctrl+e' - останавливает таймер, выводит оставшееся время на таймере и отправляет клавишу 'z'.")
-print("4. При нажатии 'ctrl+r' - сбрасывает таймер и отправляет клавишу 'z'.")
+print("3. При нажатии 'ctrl+e' - сбрасывает таймер и отправляет клавишу 'z'.")
+print("4. При нажатии 'ctrl+r' - показать информацию о таймере.")
 print("5. При нажатии 'ctrl+t' - устанавливает длительность таймера.")
-print("5. При нажатии 'ctrl+y' - показать информацию о таймере.")
 
 print('\n')
 print('-------------------------')
@@ -167,9 +137,8 @@ app = TimerApp()
 
 keyboard.add_hotkey('ctrl+q', app.capture_window)
 keyboard.add_hotkey('ctrl+w', app.start)
-keyboard.add_hotkey('ctrl+e', app.stop)
-keyboard.add_hotkey('ctrl+r', app.reset)
+keyboard.add_hotkey('ctrl+e', app.reset)
+keyboard.add_hotkey('ctrl+r', app.get_info_timer)
 keyboard.add_hotkey('ctrl+t', app.set_timer)
-keyboard.add_hotkey('ctrl+y', app.get_info_timer)
 
 keyboard.wait()
