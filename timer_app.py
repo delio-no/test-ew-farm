@@ -27,13 +27,20 @@ class TimerApp:
         self.timer_duration = 300  # default timer duration is 5 minutes
         self.is_run = False
         self.end_time = None
+        self.send_key_on_reset = ctk.BooleanVar(value=False)  # Checkbox variable
 
         self.create_widgets()
         self.setup_hotkeys()
 
     def create_widgets(self):
-        self.status_label = ctk.CTkLabel(self.root, text="Статус: Не захвачено")
-        self.status_label.pack(pady=5)
+        self.status_label_frame = ctk.CTkFrame(self.root)
+        self.status_label_frame.pack(pady=5)
+
+        self.status_label = ctk.CTkLabel(self.status_label_frame, text="Статус окна EW: Не захвачено")
+        self.status_label.pack(side="left", padx=(0, 10))
+
+        self.status_indicator = ctk.CTkFrame(self.status_label_frame, width=20, height=20)
+        self.status_indicator.pack(side="left")
 
         self.timer_label = ctk.CTkLabel(self.root, text="Таймер: 00:00")
         self.timer_label.pack(pady=5)
@@ -41,20 +48,23 @@ class TimerApp:
         self.timer_duration_label = ctk.CTkLabel(self.root, text=f"Текущая длительность таймера: {self.timer_duration} секунд")
         self.timer_duration_label.pack(pady=5)
 
-        self.start_button = ctk.CTkButton(self.root, text="Старт", command=self.start)
+        self.start_button = ctk.CTkButton(self.root, text="Старт таймера", command=self.start)
         self.start_button.pack(pady=5)
 
-        self.reset_button = ctk.CTkButton(self.root, text="Сброс", command=self.reset)
+        self.reset_button = ctk.CTkButton(self.root, text="Сброс таймера", command=self.reset)
         self.reset_button.pack(pady=5)
-
-        self.capture_window_button = ctk.CTkButton(self.root, text="Захватить окно",
-                                                   command=self.find_and_capture_window)
-        self.capture_window_button.pack(pady=5)
 
         self.set_timer_button = ctk.CTkButton(self.root, text="Установить таймер", command=self.set_timer)
         self.set_timer_button.pack(pady=5)
 
-        self.description_label = ctk.CTkLabel(self.root, text="Описание функционала программы:",
+        self.capture_window_button = ctk.CTkButton(self.root, text="Захватить окно", command=self.find_and_capture_window)
+        self.capture_window_button.pack(pady=5)
+
+        self.send_key_on_reset_checkbox = ctk.CTkCheckBox(self.root, text="Отправить клавишу 'Z' при сбросе таймера",
+                                                          variable=self.send_key_on_reset)
+        self.send_key_on_reset_checkbox.pack(pady=5)
+
+        self.description_label = ctk.CTkLabel(self.root, text="Описание горячих клавиш:",
                                               font=("Arial", 12, "bold"))
         self.description_label.pack(pady=5)
 
@@ -64,19 +74,18 @@ class TimerApp:
                                      "1. При нажатии 'ctrl+q' - захватывает HWID (PID) и HWND текущего активного окна.\n")
         self.description_text.insert(ctk.END,
                                      "2. При нажатии 'ctrl+w' - отправляет клавишу 'z' в текущий активный процесс и запускает таймер.\n")
-        self.description_text.insert(ctk.END, "3. При нажатии 'ctrl+e' - сбрасывает таймер.\n")
+        self.description_text.insert(ctk.END, "3. При нажатии 'ctrl+e' - сбрасывает таймер и отправляет клавишу 'z'.\n")
         self.description_text.configure(state="disabled")
 
-        self.description_label_console = ctk.CTkLabel(self.root, text="Консоль:",
+        self.description_label = ctk.CTkLabel(self.root, text="Консоль:",
                                               font=("Arial", 12, "bold"))
-        self.description_label_console.pack(pady=5)
-
-        self.console = ctk.CTkTextbox(self.root, width=380, height=150)
+        self.description_label.pack(pady=5)
+        self.console = ctk.CTkTextbox(self.root, width=380, height=120)
         self.console.pack(pady=5)
 
     def setup_hotkeys(self):
         keyboard.add_hotkey('ctrl+q', self.capture_window)
-        keyboard.add_hotkey('ctrl+w', self.start)
+        keyboard.add_hotkey('ctrl+w', self.start_hot_key)
         keyboard.add_hotkey('ctrl+e', self.reset)
 
     def get_active_window_pid(self):
@@ -88,9 +97,18 @@ class TimerApp:
         else:
             return None, None
 
-    def press_key_z(self):
+    def press_key_z_with_delay(self):
         try:
             time.sleep(1)
+            win32api.PostMessage(self.hwnd, win32con.WM_KEYDOWN, int(VK_CODE['z']), 0)
+            win32api.PostMessage(self.hwnd, win32con.WM_KEYUP, int(VK_CODE['z']), 0)
+            self.log('Нажата клавиша z')
+        except Exception as e:
+            self.log('Ошибка нажатия клавиши')
+            self.log(f"Ошибка: {e}")
+
+    def press_key_z_without_delay(self):
+        try:
             win32api.PostMessage(self.hwnd, win32con.WM_KEYDOWN, int(VK_CODE['z']), 0)
             win32api.PostMessage(self.hwnd, win32con.WM_KEYUP, int(VK_CODE['z']), 0)
             self.log('Нажата клавиша z')
@@ -101,15 +119,17 @@ class TimerApp:
     def timer_function(self):
         self.log('Таймер завершен')
         self.is_run = False
-        self.press_key_z()
+        self.press_key_z_without_delay()
 
     def capture_window(self):
         self.process_id, self.hwnd = self.get_active_window_pid()
         if self.hwnd:
-            self.status_label.configure(text="Статус: Захвачено")
+            self.status_label.configure(text="Статус окна EW: Захвачено")
+            self.status_indicator.configure(fg_color="green")
             self.log('Окно захвачено')
         else:
-            self.status_label.configure(text="Статус: Не захвачено")
+            self.status_label.configure(text="Статус окна EW: Не захвачено")
+            self.status_indicator.configure(fg_color="red")
             self.log('Окно не является EndlessWar.exe')
 
     def find_and_capture_window(self):
@@ -121,10 +141,12 @@ class TimerApp:
             self.process_id = processes[0].info['pid']
             self.hwnd = self.get_hwnd_from_pid(self.process_id)
             if self.hwnd:
-                self.status_label.configure(text="Статус: Захвачено")
+                self.status_label.configure(text="Статус окна EW: Захвачено")
+                self.status_indicator.configure(fg_color="green")
                 self.log('Окно EndlessWar.exe захвачено')
                 return
-        self.status_label.configure(text="Статус: Не захвачено")
+        self.status_label.configure(text="Статус окна EW: Не захвачено")
+        self.status_indicator.configure(fg_color="red")
         self.log('Окно EndlessWar.exe не найдено')
 
     def get_hwnd_from_pid(self, pid):
@@ -153,7 +175,20 @@ class TimerApp:
         if self.hwnd:
             self.log('Старт таймера')
             self.timer = threading.Timer(self.timer_duration, self.timer_function)
-            self.press_key_z()
+            self.press_key_z_without_delay()
+            self.start_time = time.time()
+            self.end_time = self.start_time + self.timer_duration
+            self.is_run = True
+            self.timer.start()
+            self.update_timer()
+        else:
+            self.log('Требуется захват окна - ctrl+q')
+
+    def start_hot_key(self):
+        if self.hwnd:
+            self.log('Старт таймера')
+            self.timer = threading.Timer(self.timer_duration, self.timer_function)
+            self.press_key_z_with_delay()
             self.start_time = time.time()
             self.end_time = self.start_time + self.timer_duration
             self.is_run = True
@@ -169,6 +204,8 @@ class TimerApp:
             self.remaining_time = None
             self.timer_label.configure(text="Таймер: 00:00")
             self.log('Таймер сброшен')
+            if self.send_key_on_reset.get():
+                self.press_key_z_without_delay()
         else:
             self.log('Таймер не запущен')
 
