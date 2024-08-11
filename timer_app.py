@@ -84,16 +84,16 @@ class TimerApp:
             print('-----')
             print('Старт таймера')
             self.timer = threading.Timer(self.remaining_time, self.timer_function)
+            self.press_key_z()
             self.start_time = time.time()
             self.end_time = self.start_time + self.remaining_time
-            self.press_key_z()
         else:
             print('-----')
             print('Старт таймера')
             self.timer = threading.Timer(self.timer_duration, self.timer_function)
+            self.press_key_z()
             self.start_time = time.time()
             self.end_time = self.start_time + self.timer_duration
-            self.press_key_z()
         self.is_run = True
         self.timer.start()
 
@@ -103,10 +103,10 @@ class TimerApp:
             self.remaining_time = self.get_remaining_time()
             self.timer.cancel()
             self.is_run = False
+            self.press_key_z()
             print('-----')
             print('Таймер остановлен')
             print(f'Время таймера: {self.get_remaining_time()}')
-            self.press_key_z()
         else:
             print('-----')
             print('Таймер не запущен')
