@@ -144,6 +144,7 @@ class TimerApp:
                 self.status_label.configure(text="Статус окна EW: Захвачено")
                 self.status_indicator.configure(fg_color="green")
                 self.log('Окно EndlessWar.exe захвачено')
+                print(self.hwnd)
                 return
         self.status_label.configure(text="Статус окна EW: Не захвачено")
         self.status_indicator.configure(fg_color="red")
@@ -173,6 +174,8 @@ class TimerApp:
 
     def start(self):
         if self.hwnd:
+            if self.is_run:
+                self.reset()
             self.log('Старт таймера')
             self.timer = threading.Timer(self.timer_duration, self.timer_function)
             self.press_key_z_without_delay()
